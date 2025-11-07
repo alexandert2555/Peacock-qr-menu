@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,31 +7,34 @@ import MenuCard from "@/components/MenuCard";
 import { supabase } from "@/integrations/supabase/client";
 import type { MenuItem } from "@/data/menuData";
 
+const CATEGORY_ORDER: string[] = [
+  "All",
+  "Appetisers",
+  "BBQ",
+  "DimSum",
+  "Cold-dressed",
+  "Soup",
+  "Meat",
+  "Superior Luxurious",
+  "Emperor's Seafood",
+  "Global Seafood",
+  "Tofu & Vegetables",
+  "Rice & Noodles",
+  "Desserts",
+  "Beverages",
+  "Other",
+];
+
 const Menu = () => {
   const navigate = useNavigate();
-  const CATEGORY_ORDER = [
-    "All",
-    "Appetisers",
-    "BBQ",
-    "DimSum",
-    "Cold-dressed",
-    "Soup",
-    "Meat",
-    "Superior Luxurious",
-    "Emperor's Seafood",
-    "Global Seafood",
-    "Tofu & Vegetables",
-    "Rice & Noodles",
-    "Desserts",
-    "Beverages",
-    "Other",
-  ];
   const [language, setLanguage] = useState<"en" | "cn">("en");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoriesList, setCategoriesList] = useState<{ en: string; cn: string }[]>([{ en: "All", cn: "全部" }]);
+  const [showFilters, setShowFilters] = useState(true);
+  const lastScrollY = useRef(0);
 
   const fetchMenuItems = useCallback(async () => {
     setLoading(true);
@@ -84,6 +87,33 @@ const Menu = () => {
       setLanguage(savedLang);
     }
     fetchMenuItems();
+
+    const handleScroll = () => {
+      if (typeof window === "undefined") return;
+
+      const currentScrollY = window.scrollY;
+      const isMobile = window.innerWidth <= 768;
+
+      if (!isMobile) {
+        setShowFilters(true);
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      if (currentScrollY > lastScrollY.current && currentScrollY > 120) {
+        setShowFilters(false);
+      } else {
+        setShowFilters(true);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, [fetchMenuItems]);
 
   const toggleLanguage = () => {
@@ -140,8 +170,12 @@ const Menu = () => {
       </header>
 
       {/* Search and Category Filter */}
-      <div className="sticky top-[73px] z-40 bg-background/95 backdrop-blur-md border-b border-border shadow-sm">
-        <div className="container mx-auto px-4 py-4 space-y-4">
+      <div
+        className={`sticky top-[73px] z-40 bg-background/95 backdrop-blur-md border-b border-border shadow-sm transition-transform duration-300 md:translate-y-0 ${
+          showFilters ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
+        <div className="container mx-auto px-4 py-3 space-y-3 md:space-y-4 md:py-4">
           {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -155,13 +189,13 @@ const Menu = () => {
           </div>
           
           {/* Category Filter */}
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="flex flex-wrap justify-center md:justify-start gap-2 pb-2">
             {categoriesList.map((cat) => (
               <Button
                 key={cat.en}
                 variant={selectedCategory === cat.en ? "default" : "outline"}
                 onClick={() => setSelectedCategory(cat.en)}
-                className={`flex-shrink-0 ${
+                className={`flex-shrink-0 px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base rounded-full font-medium transition-all ${
                   selectedCategory === cat.en
                     ? "bg-primary hover:bg-primary/90 shadow-elegant"
                     : "hover:bg-muted"
