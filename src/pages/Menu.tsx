@@ -171,7 +171,7 @@ const Menu = () => {
 
       {/* Search and Category Filter */}
       <div
-        className={`sticky top-[73px] z-40 bg-background/95 backdrop-blur-md border-b border-border shadow-sm transition-transform duration-300 md:translate-y-0 ${
+        className={`sticky top-[73px] z-40 bg-background/85 backdrop-blur-md border-b border-border shadow-sm transition-transform duration-300 md:translate-y-0 ${
           showFilters ? "translate-y-0" : "-translate-y-full"
         }`}
       >
@@ -218,7 +218,7 @@ const Menu = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in">
               {filteredMenu.map((item) => (
                 <MenuCard key={item.id} item={item} language={language} />
               ))}

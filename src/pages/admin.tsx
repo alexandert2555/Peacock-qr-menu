@@ -161,7 +161,7 @@ const Admin = () => {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b">
-            <th className="text-left py-3 px-2">name</th>
+            <th className="text-left py-3 px-2">Name</th>
             <th className="text-left py-3 px-2">image_urls (comma separated)</th>
             <th className="text-left py-3 px-2">is_available</th>
             <th className="text-left py-3 px-2">actions</th>
