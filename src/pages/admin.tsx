@@ -4,7 +4,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Check, X, Loader2 } from "lucide-react";
+import { Check, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 type MenuRow = Database["public"]["Tables"]["menu_items"]["Row"];
 
@@ -24,6 +24,8 @@ const Admin = () => {
   const [edits, setEdits] = useState<Record<string, RowEditState>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [saveStatus, setSaveStatus] = useState<Record<string, "success" | "error" | null>>({});
+  const [sortField, setSortField] = useState<"name" | "display_order" | "is_available">("display_order");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     adminSupabase.auth.getSession().then(({ data }) => {
@@ -117,6 +119,37 @@ const Admin = () => {
     }
   }, [edits]);
 
+  const sortedRows = useMemo(() => {
+    const sorted = [...rows];
+    sorted.sort((a, b) => {
+      let comparison = 0;
+      
+      if (sortField === "name") {
+        comparison = a.name_en.localeCompare(b.name_en);
+      } else if (sortField === "display_order") {
+        const orderA = a.display_order ?? 999999;
+        const orderB = b.display_order ?? 999999;
+        comparison = orderA - orderB;
+      } else if (sortField === "is_available") {
+        const availableA = a.is_available ? 1 : 0;
+        const availableB = b.is_available ? 1 : 0;
+        comparison = availableB - availableA; // true first
+      }
+      
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+    return sorted;
+  }, [rows, sortField, sortDirection]);
+
+  const handleSort = useCallback((field: "name" | "display_order" | "is_available") => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  }, [sortField, sortDirection]);
+
   const updateAvailability = useCallback(async (id: string, isAvailable: boolean) => {
     // Update local state immediately for better UX
     setEdits((prev) => ({
@@ -161,14 +194,51 @@ const Admin = () => {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b">
-            <th className="text-left py-3 px-2">Name</th>
-            <th className="text-left py-3 px-2">image_urls (comma separated)</th>
-            <th className="text-left py-3 px-2">is_available</th>
+            <th className="text-left py-3 px-2 w-16">Preview</th>
+            <th className="text-left py-3 px-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleSort("name")}
+                className="h-auto p-0 font-semibold hover:bg-transparent"
+              >
+                Name
+                {sortField === "name" ? (
+                  sortDirection === "asc" ? (
+                    <ArrowUp className="ml-1 h-3 w-3" />
+                  ) : (
+                    <ArrowDown className="ml-1 h-3 w-3" />
+                  )
+                ) : (
+                  <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+                )}
+              </Button>
+            </th>
+            <th className="text-left py-3 px-2">Image Links (comma separated)</th>
+            <th className="text-left py-3 px-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleSort("is_available")}
+                className="h-auto p-0 font-semibold hover:bg-transparent"
+              >
+                Show/Hide
+                {sortField === "is_available" ? (
+                  sortDirection === "asc" ? (
+                    <ArrowUp className="ml-1 h-3 w-3" />
+                  ) : (
+                    <ArrowDown className="ml-1 h-3 w-3" />
+                  )
+                ) : (
+                  <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+                )}
+              </Button>
+            </th>
             <th className="text-left py-3 px-2">actions</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => {
+          {sortedRows.map((row) => {
             const edit = edits[row.id];
             const isSaving = saving[row.id];
             const status = saveStatus[row.id];
@@ -177,11 +247,31 @@ const Admin = () => {
               edit.is_available !== !!row.is_available
             );
 
+            // Show preview from edit state if available, otherwise from saved row
+            const previewUrls = edit?.image_urls 
+              ? edit.image_urls.split(",").map(s => s.trim()).filter(Boolean)
+              : (row.image_urls || []);
+            const firstImage = previewUrls.length > 0 
+              ? previewUrls[0] 
+              : "/placeholder.svg";
+
             return (
               <tr key={row.id} className="border-b align-top">
+                <td className="py-3 px-2">
+                  <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
+                    <img
+                      src={firstImage}
+                      alt={row.name_en}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                      }}
+                    />
+                  </div>
+                </td>
                 <td className="py-3 px-2 min-w-[220px]">
                   <div className="font-medium">{row.name_en}</div>
-                  <div className="text-muted-foreground">{row.name_cn}</div>
+                  <div className="text-muted-foreground text-xs">{row.name_cn}</div>
                 </td>
                 <td className="py-3 px-2 min-w-[360px]">
                   <Input
@@ -239,7 +329,7 @@ const Admin = () => {
         </tbody>
       </table>
     </div>
-  ), [rows, edits, saving, saveStatus, saveRow, updateAvailability]);
+  ), [sortedRows, edits, saving, saveStatus, saveRow, updateAvailability, sortField, sortDirection, handleSort]);
 
   if (!sessionReady) {
     return (
