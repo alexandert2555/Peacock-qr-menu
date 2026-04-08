@@ -11,6 +11,7 @@ type MenuRow = Database["public"]["Tables"]["menu_items"]["Row"];
 type RowEditState = {
   image_urls: string;
   is_available: boolean;
+  price: number;
 };
 
 const Admin = () => {
@@ -61,6 +62,7 @@ const Admin = () => {
         initialEdits[row.id] = {
           image_urls: (row.image_urls || []).join(", "),
           is_available: !!row.is_available,
+          price: row.price,
         };
       });
       setEdits(initialEdits);
@@ -96,6 +98,7 @@ const Admin = () => {
       .update({
         image_urls: imageUrlsArray,
         is_available: edit.is_available,
+        price: edit.price,
       })
       .eq("id", id)
       .select()
@@ -234,6 +237,7 @@ const Admin = () => {
                 )}
               </Button>
             </th>
+            <th className="text-left py-3 px-2">Price (£)</th>
             <th className="text-left py-3 px-2">actions</th>
           </tr>
         </thead>
@@ -244,7 +248,8 @@ const Admin = () => {
             const status = saveStatus[row.id];
             const hasChanges = edit && (
               edit.image_urls !== (row.image_urls || []).join(", ") ||
-              edit.is_available !== !!row.is_available
+              edit.is_available !== !!row.is_available ||
+              edit.price !== row.price
             );
 
             // Show preview from edit state if available, otherwise from saved row
@@ -298,8 +303,29 @@ const Admin = () => {
                     disabled={isSaving}
                   />
                 </td>
+<td className="py-3 px-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={edit?.price ?? row.price}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setEdits((prev) => ({
+                        ...prev,
+                        [row.id]: {
+                          ...prev[row.id],
+                          image_urls: prev[row.id]?.image_urls ?? (row.image_urls || []).join(", "),
+                          is_available: edit?.is_available ?? !!row.is_available,
+                          price: isNaN(val) ? row.price : val,
+                        },
+                      }));
+                    }}
+                    disabled={isSaving}
+                    className="w-20 h-8 text-sm border rounded px-2"
+                  />
+                </td>
                 <td className="py-3 px-2">
-                  <div className="flex items-center gap-2">
                     <Button
                       size="sm"
                       onClick={() => void saveRow(row.id)}
@@ -321,8 +347,7 @@ const Admin = () => {
                     {status === "error" && (
                       <X className="h-4 w-4 text-red-500" />
                     )}
-                  </div>
-                </td>
+                  </td>
               </tr>
             );
           })}
